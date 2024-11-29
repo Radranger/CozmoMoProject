@@ -1,13 +1,14 @@
 import cozmo
 import asyncio
 import time
-
+from cozmo.util import degrees, distance_mm
+'''
 # FROM HELLO WORLD:
-def cozmo_program(robot: cozmo.robot.Robot):
+def cozmo_hello(robot: cozmo.robot.Robot):
     robot.say_text("Hello World").wait_for_completed()
 
 # FROM PLAY SONG:
-def cozmo_program(robot: cozmo.robot.Robot):
+def cozmo_sing(robot: cozmo.robot.Robot):
 
     # Create an array of SongNote objects, consisting of all notes from C2 to C3_Sharp
     notes = [
@@ -42,6 +43,7 @@ def cozmo_program(robot: cozmo.robot.Robot):
     robot.play_song(notes, loop_count=1).wait_for_completed()
 
 cozmo.run_program(cozmo_program)
+'''
 # OUR CODE Comments with SDK references below found at:
 # https://data.bit-bots.de/cozmo_sdk_doc/cozmosdk.anki.com/docs/generated/cozmo.robot.html
 
@@ -54,7 +56,7 @@ cozmo.run_program(cozmo_program)
 
 # Facial expression angry:
 #cozmo.faces.FACIAL_EXPRESSION_ANGRY= 'angry'
-'''
+
 def make_cozmo_angry(robot: cozmo.robot.Robot):
     try:
         # Step 1: Spot cube
@@ -93,4 +95,5 @@ def pick_up_cube(robot: cozmo.robot.Robot):
         print("Cozmo is busy, retrying...")
 
 #Step 3: Make Cozmo drop the cube in a specific location "bin".
-'''
+cozmo.run_program(make_cozmo_angry)
+cozmo.run_program(pick_up_cube)
