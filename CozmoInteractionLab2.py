@@ -78,8 +78,11 @@ def make_cozmo_angry(robot: cozmo.robot.Robot):
             robot.play_anim_trigger(cozmo.anim.Triggers.DriveEndAngry).wait_for_completed()
 
 
-        else:
+        elif len(cube) < 2:
             cozmo_sing(robot)
+
+        else: 
+            return
     
     except cozmo.exceptions.RobotBusy:
         print("Cozmo is busy, retrying...")
