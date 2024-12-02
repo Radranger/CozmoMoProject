@@ -2,48 +2,28 @@ import cozmo
 import asyncio
 import time
 from cozmo.util import degrees, distance_mm
-'''
-# FROM HELLO WORLD:
-def cozmo_hello(robot: cozmo.robot.Robot):
-    robot.say_text("Hello World").wait_for_completed()
+
 
 # FROM PLAY SONG:
 def cozmo_sing(robot: cozmo.robot.Robot):
 
-    # Create an array of SongNote objects, consisting of all notes from C2 to C3_Sharp
     notes = [
         cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C2_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.D2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.D2_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.E2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.F2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.F2_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.G2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.G2_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.A2, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.A2_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.B2, cozmo.song.NoteDurations.Quarter),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.Quarter),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.Quarter),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.Quarter),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.G2, cozmo.song.NoteDurations.Half),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.G2, cozmo.song.NoteDurations.Half),
         cozmo.song.SongNote(cozmo.song.NoteTypes.C3, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C3_Sharp, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.Rest, cozmo.song.NoteDurations.Quarter) ]
+        cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.Quarter),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.D2, cozmo.song.NoteDurations.Half),
+        cozmo.song.SongNote(cozmo.song.NoteTypes.C2, cozmo.song.NoteDurations.ThreeQuarter)
+    ]
 
     # Play the ascending notes
     robot.play_song(notes, loop_count=1).wait_for_completed()
 
-    # Create an array of SongNote objects, consisting of the C3 pitch with varying durations
-    notes = [
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C3, cozmo.song.NoteDurations.Half),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C3, cozmo.song.NoteDurations.ThreeQuarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.Rest, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C3, cozmo.song.NoteDurations.Quarter),
-        cozmo.song.SongNote(cozmo.song.NoteTypes.C3, cozmo.song.NoteDurations.Whole) ]
 
-    # Play the notes with varying durations
-    robot.play_song(notes, loop_count=1).wait_for_completed()
-
-cozmo.run_program(cozmo_program)
-'''
 # OUR CODE Comments with SDK references below found at:
 # https://data.bit-bots.de/cozmo_sdk_doc/cozmosdk.anki.com/docs/generated/cozmo.robot.html
 
@@ -54,46 +34,105 @@ cozmo.run_program(cozmo_program)
 #    class cozmo.behavior.BehaviorTypes
 #    FindFaces= _BehaviorType(name='FindFaces', id=1)
 
-# Facial expression angry:
-#cozmo.faces.FACIAL_EXPRESSION_ANGRY= 'angry'
 
 def make_cozmo_angry(robot: cozmo.robot.Robot):
+
+    robot.say_text("Mmo").wait_for_completed()
     try:
         # Step 1: Spot cube
-        cube = robot.world.wait_for_observed_light_cube(timeout=10)
-        if cube:
-            robot.play_anim(name="anim_reacttoblock_happydetermined").wait_for_completed()
+        lookaround = robot.start_behavior(cozmo.behavior.BehaviorTypes.LookAroundInPlace)
+        cube = robot.world.wait_until_observe_num_objects(num=2, object_type=cozmo.objects.LightCube, timeout=10)
+        lookaround.stop()
         
-        # Step 2: Look for a human face
-        robot.say_text("Who did this?").wait_for_completed()
-        found_face = None
-        for _ in range(4):  # Rotate in place up to 360 degrees
-            robot.turn_in_place(degrees(90)).wait_for_completed()
-            found_face = robot.world.wait_for_observed_face(timeout=3)
-            if found_face:
-                break
-        
-        if found_face:
-            robot.play_anim(name="anim_greeting_happy_01").wait_for_completed()
-            robot.say_text("I am angry!").wait_for_completed()
-        else:
-            robot.say_text("No human found!").wait_for_completed()
+        if len(cube) == 2:
+            robot.play_anim_trigger(cozmo.anim.Triggers.DriveStartAngry).wait_for_completed()
+            robot.play_anim_trigger(cozmo.anim.Triggers.DriveLoopAngry).wait_for_completed()
 
+            # Step 2: Look for a human face
+            robot.say_text("Whoa whoa whoa whoa").wait_for_completed()
+
+            #robot.move_lift(-3)
+            robot.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE).wait_for_completed()
+            face = None
+            
+            while True:
+                if face and face.is_visible:
+                    robot.set_all_backpack_lights(cozmo.lights.red_light)
+                    break
+                else:
+                    robot.set_backpack_lights_off()
+
+                    # Wait until we we can see another face
+                    try:
+                        face = robot.world.wait_for_observed_face(timeout=30)
+                    except asyncio.TimeoutError:
+                        print("Didn't find a face.")
+                        return
+
+                time.sleep(.1)
+            
+            if face:
+                robot.say_text("You!").wait_for_completed()
+                
+            pick_up_cube(robot, cube)
+            robot.play_anim_trigger(cozmo.anim.Triggers.DriveEndAngry).wait_for_completed()
+
+
+        else:
+            cozmo_sing(robot)
+    
     except cozmo.exceptions.RobotBusy:
         print("Cozmo is busy, retrying...")
 
-#Step 2: Make Cozmo go and pick up the cube.
-def pick_up_cube(robot: cozmo.robot.Robot):
-    try:
-        cube = robot.world.wait_for_observed_light_cube(timeout=10)
-        if cube:
-            robot.go_to_object(cube, distance_mm(50)).wait_for_completed()
-            robot.pickup_object(cube).wait_for_completed()
-        else:
-            robot.say_text("No cube found!").wait_for_completed()
-    except cozmo.exceptions.RobotBusy:
-        print("Cozmo is busy, retrying...")
+#Step 2: Make Cozmo stack cube.
+def pick_up_cube(robot: cozmo.robot.Robot, cube):
+    
+    if len(cube) < 2:
+        print("Error: need 2 Cubes but only found", len(cube), "Cube(s)")
+    else:
+        # Try and pickup the 1st cube
+        current_action = robot.pickup_object(cube[0], num_retries=3, in_parallel = True)
+        current_action.wait_for_completed()
+        if current_action.has_failed:
+            code, reason = current_action.failure_reason
+            result = current_action.result
+            print("Pickup Cube failed: code=%s reason='%s' result=%s" % (code, reason, result))
+            return
 
-#Step 3: Make Cozmo drop the cube in a specific location "bin".
+        # Now try to place that cube on the 2nd one
+        current_action = robot.place_on_object(cube[1], num_retries=3)
+        current_action.wait_for_completed()
+        if current_action.has_failed:
+            code, reason = current_action.failure_reason
+            result = current_action.result
+            print("Place On Cube failed: code=%s reason='%s' result=%s" % (code, reason, result))
+            return
+
+        print("Cozmo successfully stacked 2 blocks!")
+
+
+
+def detect_face(robot: cozmo.robot.Robot):
+    robot.move_lift(-3)
+    robot.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE).wait_for_completed()
+
+    face = None
+     
+    while True:
+        if face and face.is_visible:
+            robot.set_all_backpack_lights(cozmo.lights.blue_light)
+        else:
+            robot.set_backpack_lights_off()
+
+            # Wait until we we can see another face
+            try:
+                face = robot.world.wait_for_observed_face(timeout=30)
+            except asyncio.TimeoutError:
+                print("Didn't find a face.")
+                return
+
+        time.sleep(.1)
+
+#cozmo.run_program(follow_faces)
+
 cozmo.run_program(make_cozmo_angry)
-cozmo.run_program(pick_up_cube)
