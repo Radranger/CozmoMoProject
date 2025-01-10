@@ -2,6 +2,7 @@ import cozmo
 import asyncio
 import time
 from cozmo.util import degrees, distance_mm
+import speech_recognition as sr
 
 
 # FROM PLAY SONG:
@@ -41,10 +42,10 @@ def make_cozmo_angry(robot: cozmo.robot.Robot):
     try:
         # Step 1: Spot cube
         lookaround = robot.start_behavior(cozmo.behavior.BehaviorTypes.LookAroundInPlace)
-        cube = robot.world.wait_until_observe_num_objects(num=2, object_type=cozmo.objects.LightCube, timeout=10)
+        cube = robot.world.wait_until_observe_num_objects(num=3, object_type=cozmo.objects.LightCube, timeout=10)
         lookaround.stop()
         
-        if len(cube) == 2:
+        if len(cube) >= 2:
             robot.play_anim_trigger(cozmo.anim.Triggers.DriveStartAngry).wait_for_completed()
             robot.play_anim_trigger(cozmo.anim.Triggers.DriveLoopAngry).wait_for_completed()
 
@@ -53,29 +54,62 @@ def make_cozmo_angry(robot: cozmo.robot.Robot):
 
             #robot.move_lift(-3)
             robot.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE).wait_for_completed()
-            face = None
+
             
+            face_to_follow = None  # Start with no face detected
+            followCnt = 0
             while True:
-                if face and face.is_visible:
-                    robot.set_all_backpack_lights(cozmo.lights.red_light)
+                turn_action = None
+                if(followCnt == 3):
                     break
-                else:
-                    robot.set_backpack_lights_off()
 
-                    # Wait until we we can see another face
+                if face_to_follow:
+                    if face_to_follow.is_visible:
+                        # Turn towards the visible face
+                        print("Following the face...")
+                        turn_action = robot.turn_towards_face(face_to_follow)
+                        followCnt = followCnt+1
+                    else:
+                        # If the face is no longer visible, reset and search again
+                        print("Lost the face. Searching again...")
+                        face_to_follow = None
+
+                if not face_to_follow:
+                    # If no face is detected, turn and search for one
                     try:
-                        face = robot.world.wait_for_observed_face(timeout=30)
-                    except asyncio.TimeoutError:
-                        print("Didn't find a face.")
-                        return
+                        print("Searching for a face...")
+                        robot.turn_in_place(degrees(-30)).wait_for_completed()  # Turn 30 degrees
+                        face_to_follow = robot.world.wait_for_observed_face(timeout=30)  # Look for a face
 
-                time.sleep(.1)
-            
-            if face:
-                robot.say_text("You!").wait_for_completed()
-                
-            pick_up_cube(robot, cube)
-            robot.play_anim_trigger(cozmo.anim.Triggers.DriveEndAngry).wait_for_completed()
+                        if face_to_follow:
+                            print("Face found! Starting to follow.")
+
+                    except cozmo.exceptions.CozmoSDKException:
+                        print("No face detected yet. Continuing search...")
+
+                if turn_action:
+                    # Complete any ongoing turn action
+                    turn_action.wait_for_completed()
+
+                # Add a small delay to avoid overloading the CPU
+                time.sleep(1)
+
+
+            if face_to_follow:
+                robot.say_text("Was it you?").wait_for_completed()
+                speech = listen()
+                if(speech == 'not me'):
+                    robot.say_text("Liar!").wait_for_completed()
+                elif(speech == 'yes'):
+                    robot.say_text("I knew it!").wait_for_completed()
+            print(len(cube))
+            if(len(cube) == 2):
+                pick_up_cube(robot, cube)
+                robot.play_anim_trigger(cozmo.anim.Triggers.DriveEndAngry).wait_for_completed()
+            elif(len(cube) == 3):
+                build_pyrimad(robot, cube)
+                robot.play_anim_trigger(cozmo.anim.Triggers.DriveEndAngry).wait_for_completed()
+
 
 
         elif len(cube) < 2:
@@ -113,29 +147,94 @@ def pick_up_cube(robot: cozmo.robot.Robot, cube):
 
         print("Cozmo successfully stacked 2 blocks!")
 
+def build_pyrimad(robot: cozmo.robot.Robot, cube):
+    current_action = robot.pickup_object(cube[0], num_retries=3, in_parallel = True)
+    current_action.wait_for_completed()
+    if current_action.has_failed:
+        code, reason = current_action.failure_reason
+        result = current_action.result
+        print("Pickup Cube failed: code=%s reason='%s' result=%s" % (code, reason, result))
+        return
+   
+    current_action = robot.place_on_object(cube[1], num_retries=3)
+    current_action.wait_for_completed()
+    if current_action.has_failed:
+        code, reason = current_action.failure_reason
+        result = current_action.result
+        print("Place On Cube failed: code=%s reason='%s' result=%s" % (code, reason, result))
+        return
+
+    current_action = robot.pickup_object(cube[2], num_retries=3, in_parallel = True)
+    current_action.wait_for_completed()
+    if current_action.has_failed:
+        code, reason = current_action.failure_reason
+        result = current_action.result
+        print("Pickup Cube failed: code=%s reason='%s' result=%s" % (code, reason, result))
+        return
+
+    target_cube = cube[1]
+    robot.go_to_object(target_cube, distance_mm(120)).wait_for_completed()
+
+    robot.place_object_on_ground_here(target_cube, num_retries=3).wait_for_completed()
+    print("Placed the cube next to the target cube.")
 
 
-def detect_face(robot: cozmo.robot.Robot):
-    robot.move_lift(-3)
-    robot.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE).wait_for_completed()
+def build_pyrimad2(robot: cozmo.robot.Robot, cubes):
+    try:
+        # Step 2: Pick up the first cube and start the pyramid
+        current_action = robot.pickup_object(cubes[0], num_retries=3)
+        current_action.wait_for_completed()
+        if current_action.has_failed:
+            raise Exception(f"Failed to pick up the first cube: {current_action.failure_reason}")
 
-    face = None
-     
-    while True:
-        if face and face.is_visible:
-            robot.set_all_backpack_lights(cozmo.lights.blue_light)
-        else:
-            robot.set_backpack_lights_off()
+        print("Successfully picked up the first cube.")
 
-            # Wait until we we can see another face
-            try:
-                face = robot.world.wait_for_observed_face(timeout=30)
-            except asyncio.TimeoutError:
-                print("Didn't find a face.")
-                return
+        # Step 3: Use the first animation to place the first cube on the side of the second cube
+        robot.play_anim_trigger(BuildPyramidFirstBlockOnSide).wait_for_completed()
 
-        time.sleep(.1)
+        print("First cube placed on the side of the second cube.")
+
+        # Step 4: Pick up the second cube and place it on the side of the first cube
+        current_action = robot.pickup_object(cubes[1], num_retries=3)
+        current_action.wait_for_completed()
+        if current_action.has_failed:
+            raise Exception(f"Failed to pick up the second cube: {current_action.failure_reason}")
+
+        print("Successfully picked up the second cube.")
+
+        robot.play_anim_trigger(BuildPyramidSecondBlockOnSide).wait_for_completed()
+
+        print("Second cube placed on the side of the first cube.")
+
+        # Step 5: Pick up the third cube and place it upright on top
+        current_action = robot.pickup_object(cubes[2], num_retries=3)
+        current_action.wait_for_completed()
+        if current_action.has_failed:
+            raise Exception(f"Failed to pick up the third cube: {current_action.failure_reason}")
+
+        print("Successfully picked up the third cube.")
+
+        robot.play_anim_trigger(BuildPyramidThirdBlockUpright).wait_for_completed()
+
+        print("Third cube placed upright on top. Pyramid complete!")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 #cozmo.run_program(follow_faces)
+
+def listen():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Say something!")
+        audio = recognizer.listen(source)
+
+    try:
+        print("You said: " + recognizer.recognize_google(audio))
+        return recognizer.recognize_google(audio)
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Request error: {e}")
 
 cozmo.run_program(make_cozmo_angry)
